@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Interaktiv Viktorina - Toʻliq Tizim</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --primary-color: #007BFF;
+      --secondary-color: #28a745;
+      --warning-color: #ffc107;
+      --error-color: #dc3545;
+      --background-color: rgba(255, 255, 255, 0.95);
+      --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font-family);
+      background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+      color: #333;
+    }
+    .container {
+      background: var(--background-color);
+      padding: 20px;
+      border-radius: 15px;
+      width: 100%;
+      max-width: 900px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+    header { text-align: center; margin-bottom: 20px; }
+    header h1 { font-size: 2.5rem; color: var(--primary-color); }
+    /* Login page style */
+    #loginPage {
+      max-width: 400px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    #loginPage input {
+      width: 100%;
+      padding: 12px 15px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+    #loginPage button {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      background-color: var(--primary-color);
+      color: #fff;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.3s, transform 0.2s;
+    }
+    #loginPage button:hover {
+      background-color: #0056b3;
+      transform: translateY(-2px);
+    }
+    #loginError { color: var(--error-color); font-size: 14px; margin-top: 5px; }
+    
+    /* Admin Panel styles */
+    #adminPanel { display: none; }
+    .admin-nav { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; }
+    .admin-nav button {
+      padding: 10px 20px;
+      border: none;
+      background-color: var(--primary-color);
+      color: #fff;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    .admin-nav button.active { background-color: var(--secondary-color); }
+    .admin-section { display: none; }
+    
+    /* Form styles for admin */
+    .admin-form { margin-bottom: 20px; }
+    .admin-form input {
+      width: calc(100% - 22px);
+      padding: 10px;
+      margin: 5px 0;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    .admin-form button {
+      padding: 10px 20px;
+      border: none;
+      background-color: var(--primary-color);
+      color: #fff;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .list-container { max-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; border-radius: 8px; }
+    .list-item { display: flex; justify-content: space-between; margin-bottom: 5px; }
+    .list-item button { padding: 5px 10px; border: none; background-color: var(--error-color); color: #fff; border-radius: 4px; cursor: pointer; }
+    
+    /* Quiz Interface styles */
+    #quiz { display: none; }
+    .button-container {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .button-container button {
+      padding: 12px 24px;
+      border: none;
+      background-color: var(--primary-color);
+      color: #fff;
+      cursor: pointer;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      transition: background-color 0.3s, transform 0.2s;
+    }
+    .button-container button:hover {
+      background-color: #0056b3;
+      transform: translateY(-2px);
+    }
+    #startTestButton, #backToHomeButton { display: block; margin: 20px auto; }
+    #timer { display: none; font-size: 24px; font-weight: bold; margin: 10px 0; text-align: center; color: var(--primary-color); }
+    .question-container { margin-bottom: 20px; }
+    .question-container h2 { font-size: 1.8rem; margin-bottom: 15px; }
+    .option-label {
+      display: block;
+      background: #f9f9f9;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.2s;
+      font-size: 18px;
+    }
+    .option-label:hover { background: #e9e9e9; transform: translateY(-2px); }
+    .option-label input { margin-right: 10px; }
+    .progress-bar {
+      width: 100%;
+      height: 10px;
+      background: #e0e0e0;
+      border-radius: 5px;
+      margin: 20px 0;
+    }
+    .progress {
+      height: 100%;
+      background: var(--primary-color);
+      border-radius: 5px;
+      transition: width 0.3s;
+    }
+    .question-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin: 20px 0;
+    }
+    .question-list button {
+      padding: 10px;
+      background: var(--primary-color);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      transition: background-color 0.3s;
+    }
+    .question-list button.answered { background: var(--secondary-color); }
+    .question-list button.current { background: var(--warning-color); }
+    .result-container {
+      margin-top: 20px;
+      padding: 20px;
+      background: #f1f1f1;
+      border-radius: 10px;
+      font-size: 18px;
+      text-align: center;
+    }
+    .result-container h2 { margin: 0 0 10px; color: var(--primary-color); }
+    .feedback { margin-top: 10px; font-size: 18px; font-weight: bold; text-align: center; }
+    .feedback .correct { color: var(--secondary-color); }
+    .feedback .incorrect { color: var(--error-color); }
+    @media (max-width: 600px) {
+      header h1 { font-size: 2rem; }
+      .option-label { font-size: 16px; }
+      .button-container button, #startTestButton, #backToHomeButton { font-size: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Login Page -->
+    <div id="loginPage">
+      <header>
+        <h1>Tizimga Kirish</h1>
+      </header>
+      <input type="text" id="loginEmail" placeholder="Email" required>
+      <input type="password" id="loginPassword" placeholder="Parol" required>
+      <button onclick="login()">Kirish</button>
+      <div id="loginError"></div>
+    </div>
+
+    <!-- Admin Panel (faqat admin uchun) -->
+    <div id="adminPanel">
+      <header>
+        <h1>Admin Panel</h1>
+      </header>
+      <div class="admin-nav">
+        <button id="btnUsers" onclick="showAdminSection('users')" class="active">Foydalanuvchilar</button>
+        <button id="btnTests" onclick="showAdminSection('tests')">Testlar</button>
+        <button onclick="logout()">Chiqish</button>
+      </div>
+      <!-- Foydalanuvchilarni boshqarish -->
+      <div id="adminUsers" class="admin-section">
+        <h2>Yangi foydalanuvchi qo'shish</h2>
+        <div class="admin-form">
+          <input type="text" id="newUserEmail" placeholder="Foydalanuvchi email">
+          <input type="password" id="newUserPassword" placeholder="Foydalanuvchi parol">
+          <button onclick="registerUser()">Qo'shish</button>
+        </div>
+        <h3>Ro'yxatdagi foydalanuvchilar</h3>
+        <div class="list-container" id="usersList"></div>
+      </div>
+      <!-- Testlarni boshqarish -->
+      <div id="adminTests" class="admin-section">
+        <h2>Yangi test qo'shish</h2>
+        <div class="admin-form">
+          <input type="text" id="qText" placeholder="Savol matni">
+          <input type="text" id="optA" placeholder="Variant A">
+          <input type="text" id="optB" placeholder="Variant B">
+          <input type="text" id="optC" placeholder="Variant C">
+          <input type="text" id="optD" placeholder="Variant D">
+          <input type="text" id="correctOpt" placeholder="To'g'ri javob">
+          <button onclick="addTestQuestion()">Qo'shish</button>
+        </div>
+        <h3>Testlar ro'yxati</h3>
+        <div class="list-container" id="testsList"></div>
+      </div>
+    </div>
+
+    <!-- Foydalanuvchi (Quiz) Interfeysi -->
+    <div id="quiz">
+      <header>
+        <h1>📖 Interaktiv Viktorina</h1>
+      </header>
+      <main>
+        <div class="button-container" id="modeButtons" style="display:none;">
+          <button onclick="selectMode('exam')">⏱ Test</button>
+          <button onclick="selectMode('practice')">📖 Mashq</button>
+        </div>
+        <button id="startTestButton" onclick="startTest()" style="display:none;">Boshlash</button>
+        <section id="quizSection">
+          <div id="timer">⏳ 25:00</div>
+          <div class="question-container" id="questionDisplay"></div>
+          <div class="feedback" id="feedback"></div>
+          <div class="question-list" id="questionList"></div>
+          <div class="progress-bar">
+            <div id="progress" class="progress"></div>
+          </div>
+          <div class="button-container" id="quizControls">
+            <button onclick="previousQuestion()">Oldingi</button>
+            <button onclick="nextQuestionWithDelay()">Keyingi</button>
+            <button onclick="finishQuiz()">Yakunlash</button>
+          </div>
+        </section>
+        <section class="result-container" id="result" style="display:none;"></section>
+        <button id="backToHomeButton" onclick="backToHome()" style="display:none;">Bosh Menyuga Qaytish</button>
+        <button onclick="logout()" style="margin-top:20px;">Chiqish</button>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    // TESTS localStorage kaliti
+    const TESTS_KEY = "tests";
+    function loadTests() {
+      return JSON.parse(localStorage.getItem(TESTS_KEY)) || [];
+    }
+    function saveTests(tests) {
+      localStorage.setItem(TESTS_KEY, JSON.stringify(tests));
+    }
+
+    // Global o'zgaruvchilar
+    let questions = [];     // Quiz uchun testlar
+    let currentQuestionIndex = 0;
+    let correctAnswers = 0;
+    let timeLeft = 1500; // 25 daqiqa = 1500 soniya
+    let timerInterval;
+    let isExamMode = false;
+    let userAnswers = [];
+    let autoAdvanceTimeout;
+    let currentUser = null; // Hozirgi foydalanuvchi (admin yoki oddiy foydalanuvchi)
+
+    /* ------------------ Login & Logout ------------------ */
+    function login() {
+      const email = document.getElementById("loginEmail").value.trim();
+      const password = document.getElementById("loginPassword").value.trim();
+      const errorDiv = document.getElementById("loginError");
+
+      // Admin login tekshiruvi
+      if (email === "akbarkhon545@gmail.com" && password === "a19791984f") {
+        currentUser = { email: email, role: "admin" };
+        errorDiv.innerText = "";
+        document.getElementById("loginPage").style.display = "none";
+        document.getElementById("adminPanel").style.display = "block";
+        loadUsers();
+        loadTestQuestions(); // localStorage-dan testlar ro'yxatini yuklash
+      } else {
+        // Oddiy foydalanuvchi tekshiruvi (localStorage-dagi foydalanuvchilar)
+        let users = JSON.parse(localStorage.getItem("users")) || [];
+        const found = users.find(user => user.email === email && user.password === password);
+        if (found) {
+          currentUser = { email: email, role: "user" };
+          errorDiv.innerText = "";
+          document.getElementById("loginPage").style.display = "none";
+          document.getElementById("quiz").style.display = "block";
+          fetchQuizQuestions(); // localStorage-dan testlarni yuklash
+        } else {
+          errorDiv.innerText = "Noto'g'ri email yoki parol.";
+        }
+      }
+    }
+
+    function logout() {
+      currentUser = null;
+      document.getElementById("adminPanel").style.display = "none";
+      document.getElementById("quiz").style.display = "none";
+      document.getElementById("loginPage").style.display = "block";
+      document.getElementById("loginEmail").value = "";
+      document.getElementById("loginPassword").value = "";
+      document.getElementById("loginError").innerText = "";
+    }
+
+    /* ------------------ Admin Panel Navigation ------------------ */
+    function showAdminSection(section) {
+      document.getElementById("adminUsers").style.display = "none";
+      document.getElementById("adminTests").style.display = "none";
+      document.getElementById("btnUsers").classList.remove("active");
+      document.getElementById("btnTests").classList.remove("active");
+
+      if (section === "users") {
+        document.getElementById("adminUsers").style.display = "block";
+        document.getElementById("btnUsers").classList.add("active");
+      } else if (section === "tests") {
+        document.getElementById("adminTests").style.display = "block";
+        document.getElementById("btnTests").classList.add("active");
+      }
+    }
+
+    /* ------------------ Foydalanuvchi (User) Boshqaruvi ------------------ */
+    function registerUser() {
+      const email = document.getElementById("newUserEmail").value.trim();
+      const password = document.getElementById("newUserPassword").value.trim();
+      if (!email || !password) {
+        alert("Iltimos, barcha maydonlarni to'ldiring!");
+        return;
+      }
+      let users = JSON.parse(localStorage.getItem("users")) || [];
+      if (users.find(u => u.email === email)) {
+        alert("Bu foydalanuvchi allaqachon mavjud!");
+        return;
+      }
+      users.push({ email: email, password: password });
+      localStorage.setItem("users", JSON.stringify(users));
+      document.getElementById("newUserEmail").value = "";
+      document.getElementById("newUserPassword").value = "";
+      loadUsers();
+      alert("Foydalanuvchi muvaffaqiyatli qo'shildi!");
+    }
+
+    function loadUsers() {
+      const usersListDiv = document.getElementById("usersList");
+      let users = JSON.parse(localStorage.getItem("users")) || [];
+      usersListDiv.innerHTML = "";
+      users.forEach((user, index) => {
+        usersListDiv.innerHTML += `<div class="list-item">
+          <span>${user.email}</span>
+          <button onclick="deleteUser(${index})">O'chirish</button>
+        </div>`;
+      });
+    }
+
+    function deleteUser(index) {
+      let users = JSON.parse(localStorage.getItem("users")) || [];
+      users.splice(index, 1);
+      localStorage.setItem("users", JSON.stringify(users));
+      loadUsers();
+    }
+
+    /* ------------------ Test (Savol) Boshqaruvi (Admin) ------------------ */
+    function addTestQuestion() {
+      const qText = document.getElementById("qText").value.trim();
+      const optA = document.getElementById("optA").value.trim();
+      const optB = document.getElementById("optB").value.trim();
+      const optC = document.getElementById("optC").value.trim();
+      const optD = document.getElementById("optD").value.trim();
+      const correctOpt = document.getElementById("correctOpt").value.trim();
+      if (!qText || !optA || !optB || !optC || !optD || !correctOpt) {
+        alert("Barcha maydonlarni to'ldiring!");
+        return;
+      }
+      let tests = loadTests();
+      const newTest = {
+        id: Date.now(),
+        question: qText,
+        options: [optA, optB, optC, optD],
+        correct: correctOpt
+      };
+      tests.push(newTest);
+      saveTests(tests);
+      alert("Test savoli qo'shildi!");
+      document.getElementById("qText").value = "";
+      document.getElementById("optA").value = "";
+      document.getElementById("optB").value = "";
+      document.getElementById("optC").value = "";
+      document.getElementById("optD").value = "";
+      document.getElementById("correctOpt").value = "";
+      loadTestQuestions();
+    }
+
+    function loadTestQuestions() {
+      let tests = loadTests();
+      const testsListDiv = document.getElementById("testsList");
+      testsListDiv.innerHTML = "";
+      tests.forEach(test => {
+        testsListDiv.innerHTML += `<div class="list-item">
+          <span>${test.question}</span>
+          <button onclick="deleteTestQuestion(${test.id})">O'chirish</button>
+        </div>`;
+      });
+    }
+
+    function deleteTestQuestion(id) {
+      let tests = loadTests();
+      tests = tests.filter(test => test.id !== id);
+      saveTests(tests);
+      loadTestQuestions();
+    }
+
+    /* ------------------ Quiz Interfeysi (Foydalanuvchi) ------------------ */
+    function fetchQuizQuestions() {
+      let data = loadTests();
+      if (data.length === 0) {
+        alert("Hozirda testlar mavjud emas! Admin test qo'shsin.");
+        return;
+      }
+      data = data.sort(() => Math.random() - 0.5);
+      questions = data;
+      startQuiz();
+    }
+
+    function selectMode(mode) {
+      isExamMode = (mode === 'exam');
+      document.getElementById("modeButtons").style.display = "none";
+      document.getElementById("startTestButton").style.display = "block";
+    }
+
+    function startQuiz() {
+      document.getElementById("startTestButton").style.display = "none";
+      document.getElementById("quizSection").style.display = "block";
+      if (isExamMode) {
+        questions = questions.slice(0, 25);
+        timeLeft = 1500;
+        startTimer();
+        document.getElementById("questionList").style.display = "flex";
+      } else {
+        document.getElementById("timer").style.display = "none";
+        document.getElementById("questionList").style.display = "none";
+      }
+      currentQuestionIndex = 0;
+      correctAnswers = 0;
+      userAnswers = new Array(questions.length).fill(null);
+      displayQuestion();
+    }
+
+    function startTimer() {
+      document.getElementById("timer").style.display = "block";
+      document.getElementById("quizControls").style.display = "flex";
+      timerInterval = setInterval(() => {
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          finishQuiz();
+        } else {
+          let minutes = Math.floor(timeLeft / 60);
+          let seconds = timeLeft % 60;
+          document.getElementById("timer").innerText = `⏳ ${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+          timeLeft--;
+        }
+      }, 1000);
+    }
+
+    function displayQuestion() {
+      const questionObj = questions[currentQuestionIndex];
+      let quizHTML = `<h2>${questionObj.question}</h2>`;
+      questionObj.options.forEach((option, index) => {
+        const isChecked = userAnswers[currentQuestionIndex] === option ? 'checked' : '';
+        const isDisabled = (!isExamMode && userAnswers[currentQuestionIndex] !== null) ? 'disabled' : '';
+        quizHTML += `
+          <label class="option-label">
+            <input type="radio" name="answer" value="${option}" onchange="selectAnswer(${index})" ${isChecked} ${isDisabled}>
+            ${option}
+          </label>`;
+      });
+      document.getElementById("questionDisplay").innerHTML = quizHTML;
+      updateProgress();
+      if (isExamMode) { renderQuestionList(); }
+    }
+
+    function selectAnswer(index) {
+      const questionObj = questions[currentQuestionIndex];
+      const selectedAnswer = questionObj.options[index];
+      userAnswers[currentQuestionIndex] = selectedAnswer;
+      if (!isExamMode) {
+        if (selectedAnswer === questionObj.correct) {
+          correctAnswers++;
+          document.getElementById("feedback").innerHTML = `<p class="correct">✅ To'g'ri javob!</p>`;
+        } else {
+          document.getElementById("feedback").innerHTML = `<p class="incorrect">❌ Xato! To'g'ri javob: ${questionObj.correct}</p>`;
+        }
+        document.querySelectorAll('input[name="answer"]').forEach(input => input.disabled = true);
+        clearTimeout(autoAdvanceTimeout);
+        autoAdvanceTimeout = setTimeout(() => {
+          document.getElementById("feedback").innerHTML = "";
+          if (currentQuestionIndex < questions.length - 1) {
+            currentQuestionIndex++;
+            displayQuestion();
+          } else {
+            finishQuiz();
+          }
+        }, 5000);
+      } else {
+        updateQuestionList();
+      }
+    }
+
+    function nextQuestionWithDelay() {
+      clearTimeout(autoAdvanceTimeout);
+      if (currentQuestionIndex < questions.length - 1) {
+        currentQuestionIndex++;
+        displayQuestion();
+      } else {
+        finishQuiz();
+      }
+    }
+
+    function previousQuestion() {
+      if (currentQuestionIndex > 0) {
+        currentQuestionIndex--;
+        displayQuestion();
+      }
+    }
+
+    function updateProgress() {
+      const progressPercentage = ((currentQuestionIndex + 1) / questions.length) * 100;
+      document.getElementById("progress").style.width = `${progressPercentage}%`;
+    }
+
+    function renderQuestionList() {
+      let questionListHTML = '';
+      const totalQuestions = isExamMode ? 25 : questions.length;
+      for (let i = 0; i < totalQuestions; i++) {
+        questionListHTML += `<button class="${userAnswers[i] ? 'answered' : ''} ${i === currentQuestionIndex ? 'current' : ''}" onclick="goToQuestion(${i})">${i + 1}</button>`;
+      }
+      document.getElementById("questionList").innerHTML = questionListHTML;
+    }
+
+    function updateQuestionList() {
+      document.querySelectorAll("#questionList button").forEach((button, index) => {
+        if (userAnswers[index]) {
+          button.classList.add("answered");
+        } else {
+          button.classList.remove("answered");
+        }
+        if (index === currentQuestionIndex) {
+          button.classList.add("current");
+        } else {
+          button.classList.remove("current");
+        }
+      });
+    }
+
+    function goToQuestion(index) {
+      currentQuestionIndex = index;
+      displayQuestion();
+    }
+
+    function finishQuiz() {
+      if (isExamMode) { clearInterval(timerInterval); }
+      clearTimeout(autoAdvanceTimeout);
+      document.getElementById("quizSection").style.display = "none";
+      document.getElementById("result").style.display = "block";
+      document.getElementById("backToHomeButton").style.display = "block";
+      let minutesLeft = Math.floor(timeLeft / 60);
+      let secondsLeft = timeLeft % 60;
+      let resultHTML = `<h2>🎯 Natija: ${correctAnswers} / ${questions.length}</h2>`;
+      resultHTML += `<h3>Qolgan vaqt: ${isExamMode ? `${minutesLeft}:${secondsLeft < 10 ? '0' : ''}${secondsLeft}` : 'Cheklanmagan'}</h3>`;
+      document.getElementById("result").innerHTML = resultHTML;
+    }
+
+    function backToHome() {
+      document.getElementById("result").style.display = "none";
+      document.getElementById("backToHomeButton").style.display = "none";
+      document.getElementById("quizSection").style.display = "none";
+      document.getElementById("modeButtons").style.display = "block";
+      currentQuestionIndex = 0;
+      correctAnswers = 0;
+      timeLeft = 1500;
+    }
+  </script>
+</body>
+</html>
